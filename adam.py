@@ -1,5 +1,7 @@
 import numpy as np
 import os
+import matplotlib.pyplot as plt
+from keras.utils import plot_model
 from keras.preprocessing.image import ImageDataGenerator, load_img, img_to_array
 from keras import layers, models
 from pathlib import Path
@@ -80,7 +82,7 @@ model.compile(optimizer='adam',
               metrics=['accuracy'])
 
 # 이미지 선택
-external_image_name = input("분류할 이미지 ( 확장자 포함 ) : ")
+external_image_name = input("분류할 이미지 (확장자 포함) : ")
 external_image_path = os.path.join(current_dir, "content/img_test", external_image_name)
 
 # 이미지를 모델 입력 크기로 조정
@@ -103,3 +105,33 @@ print(f"테스트 정확도: {test_acc}")
 predicted_class = list(class_names)[predicted_class_index]
 
 print(f"이미지{external_image_name}는 {predicted_class}로 분류됩니다.")
+
+# 훈련 과정에서의 손실과 정확도
+train_loss = history.history['loss']
+train_acc = history.history['accuracy']
+val_loss = history.history['val_loss']
+val_acc = history.history['val_accuracy']
+
+# 그래프
+fig, ax1 = plt.subplots()
+
+# 손실 그래프
+ax1.set_xlabel('Epochs')
+ax1.set_ylabel('Loss', color='tab:red')
+ax1.plot(range(1, epoch + 1), train_loss, label='Train Loss', color='tab:red')
+ax1.plot(range(1, epoch + 1), val_loss, label='Validation Loss', color='tab:orange')
+ax1.tick_params(axis='y', labelcolor='tab:red')
+ax1.legend(loc='upper left')
+
+# 정확도 그래프
+ax2 = ax1.twinx()
+ax2.set_ylabel('Accuracy', color='tab:blue')
+ax2.plot(range(1, epoch + 1), train_acc, label='Train Accuracy', color='tab:blue')
+ax2.plot(range(1, epoch + 1), val_acc, label='Validation Accuracy', color='tab:green')
+ax2.tick_params(axis='y', labelcolor='tab:blue')
+ax2.legend(loc='upper right')
+
+# 그래프 저장
+combined_fig_path = os.path.join(current_dir, 'combined_graph.png')
+plt.savefig(combined_fig_path)
+plt.show()
