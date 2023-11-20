@@ -1,3 +1,5 @@
 # Bow_Wow
 
-# https://docs.google.com/presentation/d/1ik2TcG4YPUJjt2AelKIowR7Kf3dMm32ql4U0TN5m8eE/edit#slide=id.g261b65f0bb5_0_70
+### [PPT 발표자료](https://docs.google.com/presentation/d/1ik2TcG4YPUJjt2AelKIowR7Kf3dMm32ql4U0TN5m8eE/edit?usp=sharing)
+
+### [GPU 사용설정 방법](https://oceanlightai.tistory.com/26)
