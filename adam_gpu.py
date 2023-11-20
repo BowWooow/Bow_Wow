@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import os
-import random
+import matplotlib.pyplot as plt
 from PIL import Image
 from keras.preprocessing.image import ImageDataGenerator
 from keras import layers, models
@@ -12,12 +12,11 @@ print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('
 
 # 모델이 GPU를 사용하도록 설정
 with tf.device('/GPU:0'):
-    
+
     # 이미지 데이터 디렉토리 경로 설정
     current_dir = os.path.dirname(os.path.realpath(__file__))
     train_dir = os.path.join(current_dir, "content/train")
     test_dir = os.path.join(current_dir, "content/test")
-
 
     # 데이터 전처리 및 증강
     train_datagen = ImageDataGenerator(
@@ -31,6 +30,7 @@ with tf.device('/GPU:0'):
 
     test_datagen = ImageDataGenerator(rescale=1.0/255.0)
 
+    # 훈련 데이터 생성
     batch_size = 128
     train_generator = train_datagen.flow_from_directory(
         train_dir,
@@ -50,7 +50,7 @@ with tf.device('/GPU:0'):
         shuffle=False  # 테스트 데이터는 섞을 필요 없음
     )
 
-    # 모델 아키텍처 설계 (건들면 작동안함)
+    # 모델 아키텍처 설계
     model = models.Sequential()
     model.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=(128, 128, 3)))
     model.add(layers.MaxPooling2D((2, 2)))
@@ -60,29 +60,10 @@ with tf.device('/GPU:0'):
     model.add(layers.MaxPooling2D((2, 2)))
     model.add(layers.Flatten())
     model.add(layers.Dense(128, activation='relu'))
-    model.add(layers.Dense(120, activation='softmax')) # 120은 클래스 수
-
-    # 모델 가중치 불러오기
-    model.load_weights(r'C:\Users\Mss\Desktop\project\ai\content\model_weights_adam.h5')
-
-    # 모델 컴파일
-    model.compile(optimizer='Adam',
-                loss='categorical_crossentropy',
-                metrics=['accuracy'])
-
-    # 모델 훈련
-    epoch = int(input("훈련 횟수 : "))
-    history = model.fit(train_generator, epochs=epoch, validation_data=test_generator)
-
-    # 모델 가중치를 H5 파일로 저장
-    model.save_weights(r'C:\Users\Mss\Desktop\project\ai\content\model_weights_adam.h5')
-
-    # 모델 평가
-    test_loss, test_acc = model.evaluate(test_generator)
-    print(f"테스트 정확도: {test_acc}")
+    model.add(layers.Dense(120, activation='softmax'))  # 120은 클래스 수
 
     # 이미지 데이터 디렉토리 경로
-    data_dir = Path("C:/Users/Mss/Desktop/project/ai/content/train")
+    data_dir = Path(os.path.join(current_dir, "content/train"))
 
     # 클래스 디렉토리 목록
     class_directories = list(data_dir.glob("*"))
@@ -91,18 +72,6 @@ with tf.device('/GPU:0'):
     class_directory_mapping = {dir.name: dir for dir in class_directories}
     class_names = list(class_directory_mapping.keys())
 
-    # 무작위로 클래스 선택
-    selected_class = random.choice(list(class_directory_mapping.keys()))
-    image_directory = class_directory_mapping[selected_class]
-
-    # 출력
-    print(f"선택된 클래스: {selected_class}")
-    print(f"디렉토리 경로: {image_directory}")
-
-    # 무작위 이미지 선택
-    image_files = list(image_directory.glob("*.jpg"))
-    selected_image_path = random.choice(image_files)
-    file_name = os.path.basename(selected_image_path)
 
     def load_and_preprocess_image(image_path, target_size=(128, 128)):
         img = Image.open(image_path)
@@ -112,13 +81,55 @@ with tf.device('/GPU:0'):
         img_array = np.expand_dims(img_array, axis=0)
         return img_array
 
+    # 모델 가중치 불러오기
+    model.load_weights(os.path.join(current_dir, 'model_weights_adam.h5'))
+
+    # 모델 컴파일
+    model.compile(optimizer='nadam',
+                loss='categorical_crossentropy',
+                metrics=['accuracy'])
+
+    # 이미지 선택
+    external_image_name = input("분류할 이미지 (확장자 포함) : ")
+    external_image_path = os.path.join(current_dir, "content/img_test", external_image_name)
+
     # 이미지를 모델 입력 크기로 조정
-    img = load_and_preprocess_image(selected_image_path)
+    img = load_and_preprocess_image(external_image_path)
 
     # 클래스 인덱스 가져오기
     predicted_class_index = np.argmax(model.predict(img))
 
-    # 분류된 클래스 출력
-    predicted_class = class_names[predicted_class_index]
 
-    print(f"이미지 {file_name} 는 {predicted_class}로 분류됩니다.")
+    # 모델 훈련
+    epoch = int(input("훈련 횟수 : "))
+    history = model.fit(train_generator, epochs=epoch, validation_data=test_generator)
+
+    # 모델 평가
+    test_loss, test_acc = model.evaluate(test_generator)
+    print(f"테스트 정확도: {test_acc}")
+
+    # 분류된 클래스 출력
+    predicted_class = list(class_names)[predicted_class_index]
+
+    print(f"이미지{external_image_name}는 {predicted_class}로 분류됩니다.")
+
+    # 훈련 중 손실과 정확도 데이터 추출
+    val_loss = history.history['val_loss']
+    val_acc = history.history['val_accuracy']
+
+    # 그래프 생성 및 시각화
+    plt.figure(figsize=(8, 6))
+
+    # 손실과 정확도 그래프
+    plt.plot(range(1, epoch + 1), val_loss, label='Validation Loss', color='tab:orange')
+    plt.plot(range(1, epoch + 1), val_acc, label='Validation Accuracy', color='tab:green')
+    plt.xlabel('Epochs')
+    plt.ylabel('Value')
+    plt.title('Validation Loss and Accuracy over Epochs')
+    plt.legend()
+    plt.grid(True)
+
+    # 그래프 이미지로 저장
+    val_combined_fig_path = os.path.join(current_dir, 'a_val_combined_graph.png')
+    plt.savefig(val_combined_fig_path)
+    plt.show()
